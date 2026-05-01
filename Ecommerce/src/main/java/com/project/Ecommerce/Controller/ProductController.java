@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.MediaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -28,10 +30,7 @@ public class ProductController {
     public List<Product> getAllProducts() {
         return service.getAllProducts();
     }
-//    @PostMapping("/products")
-//    public Product addProduct(@RequestBody Product product) {
-//        return service.addProduct(product);
-//    }
+
 
     @GetMapping("/products/{id}")
     public Product getProductById(@PathVariable int id){
@@ -75,20 +74,41 @@ public class ProductController {
                 .contentType(MediaType.valueOf(type))
                 .body(product.getImage());
     }
-    @PutMapping("/products/{id}")
-    public ResponseEntity<String> updateProduct(@PathVariable int id ,@RequestPart Product product,@RequestPart MultipartFile imagefile){
-        Product product1= null;
-        try {
-            product1 = service.updateProduct(id ,product,imagefile);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        if(product1!=null){
-            return new ResponseEntity<>("Successfully updated",HttpStatus.CREATED);
 
+
+    @PutMapping(value = "/products/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> updateProduct(
+            @PathVariable int id,
+            @RequestPart("product") String productJson,
+            @RequestPart(value = "imagefile", required = false) MultipartFile imagefile) {
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+
+            Product product = mapper.readValue(productJson, Product.class);
+
+            Product updated = service.updateProduct(id, product, imagefile);
+
+            if (updated != null) {
+                return new ResponseEntity<>("Successfully updated", HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>("Product not found", HttpStatus.NOT_FOUND);
+            }
+
+        } catch (Exception e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    @DeleteMapping("/products/{id}")
+    public ResponseEntity<String> deleteProduct(@PathVariable int id){
+        Product product =service.getProductById(id);
+        if(product != null){
+            service.deleteProduct(id);
+            return new ResponseEntity<>("Deleted Succesfully",HttpStatus.ACCEPTED);
         }
         else{
-            return new ResponseEntity<>("Failed to update",HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("failed to delete",HttpStatus.BAD_REQUEST);
         }
     }
 
