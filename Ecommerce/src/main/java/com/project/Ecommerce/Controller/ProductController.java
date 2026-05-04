@@ -44,6 +44,9 @@ public class ProductController {
             @RequestParam BigDecimal price,
             @RequestParam String description,
             @RequestParam MultipartFile file
+
+
+
     ) {
         try {
             Product product = new Product();
